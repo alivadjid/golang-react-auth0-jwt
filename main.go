@@ -112,9 +112,9 @@ func main() {
 
 	r.Handle("/status", StatusHandler).Methods("GET")
 
-	r.Handle("/products", ProductsHandler).Methods("GET")
+	r.Handle("/products", jwtMiddleware.Handler(ProductsHandler)).Methods("GET")
 
-	r.Handle("/products/{slug}/feedback", AddFeedbackHandler).Methods("POST")
+	r.Handle("/products/{slug}/feedback", jwtMiddleware.Handler(AddFeedbackHandler)).Methods("POST")
 
 	// For dev only - Set up CORS so React client can consume API
 
