@@ -1,4 +1,4 @@
-# Authentication in Golang with JWTs
+# Authentication in Golang with JWTs. Using auth0.com
 
 [Link](https://auth0.com/blog/authentication-in-golang/)
 Beego, Gin Gionix, Echo, Revel
