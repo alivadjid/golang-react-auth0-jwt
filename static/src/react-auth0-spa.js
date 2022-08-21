@@ -42,6 +42,7 @@ export const Auth0Provider = ({
       }
 
       const isAuthenticated = await auth0FromHook.isAuthenticated();
+      console.log(isAuthenticated);
 
       setIsAuthenticated(isAuthenticated);
 
@@ -65,7 +66,7 @@ export const Auth0Provider = ({
     try {
       await auth0Client.loginWithPopup(params);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     } finally {
       setPopupOpen(false);
     }
