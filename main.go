@@ -12,6 +12,28 @@ import (
   "net/http"
 )
 
+type Response struct {
+	Message string `json:"message"`
+}
+
+type Jwks struct {
+	Keys []JSONWebKeys `json:"keys"`
+}
+
+type JSONWebKeys struct {
+	Kty string `json:"kty"`
+
+	Kid string `json:"kid"`
+
+	Use string `json:"use"`
+
+	N string `json:"n"`
+
+	E string `json:"e"`
+
+	X5c []string `json:"x5c"`
+}
+
 type Product struct {
 	Id int
 
@@ -37,6 +59,38 @@ var products = []Product{
 func main() {
 
 	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
+		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+			//Verify 'aud' claim
+
+			aud := "YOUR_API_IDENTIFIER"
+
+			checkAud := token.Claims.(jwt.MapClaims).VerifyAudience(aud, false)
+
+			if !checkAud {
+				return token, errors.New("Invalid audience.")
+			}
+
+			// Verify 'iss' claim
+
+			iss := "https://YOUR_DOMAIN/"
+
+			checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
+
+			if !checkIss {
+				return token, errors.New("Invalid issuer.")
+			}
+
+			cert, err := getPemCert(token)
+			if err != nil {
+				panic(err.Error())
+			}
+			result, _ := jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
+
+			return result, nil
+
+		},
+
+		SigningMethod: jwt.SigningMethodRS256,
 
 	})
 
