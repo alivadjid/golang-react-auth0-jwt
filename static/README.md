@@ -1,1 +1,3 @@
-# Static page for auth0
+# Front for auth0
+
+auth is work
