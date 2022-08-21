@@ -14,5 +14,6 @@ middlewares
 here `net/http`
 
 in front auth0 is work
-problem in server. autho0 change api and there is no jwtmiddleware.Options. Tried to use "github.com/auth0/go-jwt-middleware/v2"
+
+There is a problem in main.go. autho0 change api and there is no jwtmiddleware.Options. Tried to use "github.com/auth0/go-jwt-middleware/v2"
 stop on error $GOROOT, $GOPATHm
