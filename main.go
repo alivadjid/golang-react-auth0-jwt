@@ -3,10 +3,13 @@ package main
 // Import our dependencies. We'll use the standard HTTP library as well as the gorill router for this app
 import (
 	"encoding/json"
-
-	"github.com/gorilla/mux"
-
-	"net/http"
+  "errors"
+  "github.com/auth0/go-jwt-middleware"
+  "github.com/dgrijalva/jwt-go"
+  "github.com/gorilla/handlers"
+  "github.com/gorilla/mux"
+  "github.com/rs/cors"
+  "net/http"
 )
 
 type Product struct {
@@ -32,6 +35,11 @@ var products = []Product{
 
 
 func main() {
+
+	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
+
+	})
+
 	// Hrer we are instantliation the gorilla/mux router
 	r := mux.NewRouter()
 
@@ -53,6 +61,14 @@ func main() {
 	r.Handle("/products", ProductsHandler).Methods("GET")
 
 	r.Handle("/products/{slug}/feedback", AddFeedbackHandler).Methods("POST")
+
+	// For dev only - Set up CORS so React client can consume API
+
+	corsWrapper := cors.New(cors.Options{
+		AllowedMethods: []string{"GET", "POST"},
+
+		AllowedHeaders: []string{"Content-Type", "Origin", "Accept", "*"},
+	})
 
 
 
