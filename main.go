@@ -6,10 +6,14 @@ import (
   "errors"
   "github.com/auth0/go-jwt-middleware"
   "github.com/dgrijalva/jwt-go"
-  "github.com/gorilla/handlers"
   "github.com/gorilla/mux"
   "github.com/rs/cors"
   "net/http"
+
+	"github.com/auth0/go-jwt-middleware/v2"
+	"github.com/auth0/go-jwt-middleware/v2/validator"
+	"context"
+	"log"
 )
 
 type Response struct {
@@ -21,16 +25,11 @@ type Jwks struct {
 }
 
 type JSONWebKeys struct {
-	Kty string `json:"kty"`
-
-	Kid string `json:"kid"`
-
-	Use string `json:"use"`
-
-	N string `json:"n"`
-
-	E string `json:"e"`
-
+	Kty string   `json:"kty"`
+	Kid string   `json:"kid"`
+	Use string   `json:"use"`
+	N   string   `json:"n"`
+	E   string   `json:"e"`
 	X5c []string `json:"x5c"`
 }
 
@@ -55,46 +54,78 @@ var products = []Product{
   Product{Id: 6, Name: "Real World VR", Slug: "real-world-vr", Description : "Explore the seven wonders of the world in VR"},
 }
 
+// var handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 	claims := r.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+
+// 	payload, err := json.Marshal(claims)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.Write(payload)
+// })
+
 
 func main() {
 
-	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
-		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-			//Verify 'aud' claim
+	keyFunc := func(ctx context.Context) (interface{}, error) {
+		// Our token must be signed using this data.
+		return []byte("secret"), nil
+	}
 
-			aud := "YOUR_API_IDENTIFIER"
+	// Set up the validator.
+	jwtValidator, err := validator.New(
+		keyFunc,
+		validator.HS256,
+		"https://<issuer-url>/",
+		[]string{"<audience>"},
+	)
+	if err != nil {
+		log.Fatalf("failed to set up the validator: %v", err)
+	}
 
-			checkAud := token.Claims.(jwt.MapClaims).VerifyAudience(aud, false)
+	// Set up the middleware.
+	jwtMiddleware := jwtmiddleware.New(jwtValidator.ValidateToken)
 
-			if !checkAud {
-				return token, errors.New("Invalid audience.")
-			}
+	// jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
+	// 	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+	// 		//Verify 'aud' claim
 
-			// Verify 'iss' claim
+	// 		aud := "https://golang-vr"
 
-			iss := "https://YOUR_DOMAIN/"
+	// 		checkAud := token.Claims.(jwt.MapClaims).VerifyAudience(aud, false)
 
-			checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
+	// 		if !checkAud {
+	// 			return token, errors.New("Invalid audience.")
+	// 		}
 
-			if !checkIss {
-				return token, errors.New("Invalid issuer.")
-			}
+	// 		// Verify 'iss' claim
 
-			cert, err := getPemCert(token)
-			if err != nil {
-				panic(err.Error())
-			}
-			result, _ := jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
+	// 		iss := "https://golang-vr/"
 
-			return result, nil
+	// 		checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
 
-		},
+	// 		if !checkIss {
+	// 			return token, errors.New("Invalid issuer.")
+	// 		}
 
-		SigningMethod: jwt.SigningMethodRS256,
+	// 		cert, err := getPemCert(token)
+	// 		if err != nil {
+	// 			panic(err.Error())
+	// 		}
+	// 		result, _ := jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
 
-	})
+	// 		return result, nil
 
-	// Hrer we are instantliation the gorilla/mux router
+	// 	},
+
+	// 	SigningMethod: jwt.SigningMethodRS256,
+
+	// })
+
+	// Here we are instantliation the gorilla/mux router
 	r := mux.NewRouter()
 
 	// On the default page we will simply serve our static index page
@@ -103,7 +134,7 @@ func main() {
 
 	// We will setup our server so we can serve static assest like images, css from the /static/{file} froute
 
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/statis/", http.FileServer(http.Dir("./static/"))))
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 
 	// Our API is going to consist of three routes
 	// /status - which we will call to make sure that our API is up and runninng
@@ -112,9 +143,9 @@ func main() {
 
 	r.Handle("/status", StatusHandler).Methods("GET")
 
-	r.Handle("/products", jwtMiddleware.Handler(ProductsHandler)).Methods("GET")
+	r.Handle("/products", jwtMiddleware.CheckJWT(ProductsHandler)).Methods("GET")
 
-	r.Handle("/products/{slug}/feedback", jwtMiddleware.Handler(AddFeedbackHandler)).Methods("POST")
+	r.Handle("/products/{slug}/feedback", jwtMiddleware.CheckJWT(AddFeedbackHandler)).Methods("POST")
 
 	// For dev only - Set up CORS so React client can consume API
 
@@ -188,7 +219,7 @@ var AddFeedbackHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Re
 func getPemCert(token *jwt.Token)(string, error) {
 	cert := ""
 
-	resp, err := http.Get("https://YOUR_DOMAIN/.well-known/jwks.json")
+	resp, err := http.Get("https://golang-vr/.well-known/jwks.json")
 
 	if err != nil {
 		return cert, err
